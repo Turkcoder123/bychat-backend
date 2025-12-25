@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: social_media_postgres
+    environment:
+      POSTGRES_DB: social_media_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - social_media_network
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: social_media_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - social_media_network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # Main Application
+  app:
+    build: .
+    container_name: social_media_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - CLIENT_URL=http://localhost:3000
+      - JWT_SECRET=your-super-secret-jwt-key
+      - REFRESH_TOKEN_SECRET=your-refresh-token-secret
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - social_media_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  social_media_network:
+    driver: bridge
